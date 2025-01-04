@@ -1,49 +1,56 @@
 ﻿@page "/weather"
-@attribute [StreamRendering(true)]
-@attribute [OutputCache(Duration = 5)]
+@using SseChat.Data.Models
+@rendermode InteractiveServer
 
-@inject WeatherApiClient WeatherApi
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <PageTitle>Weather</PageTitle>
-
-<h1>Weather</h1>
-
-<p>This component demonstrates showing data loaded from a backend API service.</p>
-
-@if (forecasts == null)
+@foreach (var message in _messages)
 {
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th aria-label="Temperature in Celsius">Temp. (C)</th>
-                <th aria-label="Temperature in Farenheit">Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
-            {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <p>
+        <span>@message.CreatedAt</span>
+        <span>@message.Id</span>
+        <span>@message.User</span>
+        <span>@message.Text</span>
+    </p>
 }
 
 @code {
-    private WeatherForecast[]? forecasts;
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<Weather>? _dotNetRef;
+    private List<Message> _messages = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        forecasts = await WeatherApi.GetWeatherAsync();
+        if (firstRender)
+        {
+            if (JS == null)
+            {
+                throw new Exception("JS Bad");
+            }
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/eventSourceHandler.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _jsModule.InvokeVoidAsync("eventSourceHandler.startEventSource", "https://localhost:7329/api/message", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnMessageReceived(Message message)
+    {
+        _messages.Add(message);
+        Console.WriteLine($"Message received: {message.Text}");
+        StateHasChanged();
+        // Handle the item (update UI, etc.)
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule != null)
+        {
+            await _jsModule.InvokeVoidAsync("eventSourceHandler.stopEventSource");
+            await _jsModule.DisposeAsync();
+        }
+        _dotNetRef?.Dispose();
     }
 }

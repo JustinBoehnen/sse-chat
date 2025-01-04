@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SseChat.Data\SseChat.Data.csproj" />
     <ProjectReference Include="..\SseChat.ServiceDefaults\SseChat.ServiceDefaults.csproj" />
   </ItemGroup>
 
