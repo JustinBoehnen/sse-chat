@@ -3,14 +3,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Server.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class InfoController : ControllerBase
     {
         [HttpGet]
         public IActionResult Get()
         {
-            return Ok($"API started {Info.Started.ToOffset(TimeSpan.FromHours(-8))}");
+            var diff = DateTimeOffset.UtcNow - Info.Started;
+            return Ok($"API started {diff.Days} days {diff.Hours} hours and {diff.Minutes} minutes ago");
         }
     }
 }
