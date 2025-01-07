@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy container app to Azure Web App - chat-client-20250106155647
+name: Build and deploy client to Azure
 
 on:
   push:
@@ -19,19 +16,20 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Log in to registry
+    - name: Log in to GitHub Container Registry (GHCR)
       uses: docker/login-action@v2
       with:
-        registry: https://ghcr.io/
-        username: ${{ secrets.AzureAppService_ContainerUsername_95db38d8018c46f9bee660e134ec6ce3 }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_de512cc54fad4fb3ac850a8daf6cc145 }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push container image to registry
+    - name: Build and push container image to GHCR
       uses: docker/build-push-action@v3
       with:
+        context: .
         push: true
-        tags: ghcr.io/${{ secrets.AzureAppService_ContainerUsername_95db38d8018c46f9bee660e134ec6ce3 }}/sse-chat-client:${{ github.sha }}
-        file: ./Dockerfile
+        tags: ghcr.io/justinboehnen/sse-chat-client:${{ github.sha }}
+        file: ./Client/Dockerfile
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,5 +45,5 @@ jobs:
       with:
         app-name: 'chat-client-20250106155647'
         slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_6792b9a93f2e416b820b8bb6ca7fa504 }}
-        images: 'ghcr.io/${{ secrets.AzureAppService_ContainerUsername_95db38d8018c46f9bee660e134ec6ce3 }}/sse-chat-client:${{ github.sha }}'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_e046bf587031418eb66a471b32ad6f13 }}
+        images: 'ghcr.io/justinboehnen/sse-chat-client:${{ github.sha }}'
