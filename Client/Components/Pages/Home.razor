@@ -123,7 +123,7 @@ else
 
             _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/eventSourceHandler.js");
             _dotNetRef = DotNetObjectReference.Create(this);
-            await _jsModule.InvokeVoidAsync("eventSourceHandler.startEventSource", $"{apiUrl}/message", _dotNetRef);
+            await _jsModule.InvokeVoidAsync("eventSourceHandler.startEventSource", $"{apiUrl}message", _dotNetRef);
             StateHasChanged();
         }
     }
@@ -172,7 +172,7 @@ else
         StateHasChanged();
 
         string apiUrl = Config.GetValue<string>("ApiUrl");
-        await Http.PostAsJsonAsync($"{apiUrl}/message", message);
+        await Http.PostAsJsonAsync($"{apiUrl}message", message);
     }
 
     private List<MessageGroup> GroupMessagesBySender()

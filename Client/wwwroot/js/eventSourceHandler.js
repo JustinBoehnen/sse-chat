@@ -20,7 +20,7 @@
             console.error("EventSource error:", error);
         };
 
-        console.log("EventSource started at: " + url);
+        console.log("EventSource started");
     },
 
     stopEventSource: function () {
