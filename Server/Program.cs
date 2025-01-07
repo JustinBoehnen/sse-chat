@@ -1,3 +1,4 @@
+using Server;
 using Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,3 +40,5 @@ app.UseCors("AllowBlazorClient");
 app.MapControllers();
 
 app.Run();
+
+Info.Started = DateTimeOffset.Now;
