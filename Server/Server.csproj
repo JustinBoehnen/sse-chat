@@ -15,6 +15,7 @@
 
   <ItemGroup>
 	<Folder Include="NewFolder\" />
+	<Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 
 </Project>
