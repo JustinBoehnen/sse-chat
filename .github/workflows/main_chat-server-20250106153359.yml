@@ -1,4 +1,4 @@
-name: Build and deploy container app to Azure Web App - chat-server-20250106153359
+name: Build and deploy server to Azure
 
 on:
   push:
