@@ -45,5 +45,5 @@ jobs:
       with:
         app-name: 'chat-client-20250106155647'
         slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_e046bf587031418eb66a471b32ad6f13 }}
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_6792b9a93f2e416b820b8bb6ca7fa504 }}
         images: 'ghcr.io/justinboehnen/sse-chat-client:${{ github.sha }}'
