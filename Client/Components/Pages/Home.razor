@@ -1,84 +1,152 @@
 ﻿@page "/"
+@rendermode InteractiveServer
 
-@inject IHttpContextAccessor ContextAccessor
+@implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+@inject HttpClient Http
 
 <PageTitle>🔴 Live Chat</PageTitle>
 
-<div class="container mt-5">
-    <h1>Welcome @(_userName ?? "Guest")</h1>
-
-    @if (!string.IsNullOrEmpty(_userName))
-    {
-        <button class="btn btn-primary" @onclick="ResetUserName">
-            Change Username
-        </button>
-    }
-</div>
-
-<!-- Modal (conditionally rendered based on username check) -->
-@if (string.IsNullOrEmpty(_userName))
+@if (string.IsNullOrWhiteSpace(_userName))
 {
-    <div class="modal fade show d-block" id="usernameModal" tabindex="-1" aria-labelledby="usernameModalLabel" aria-hidden="true" style="background: rgba(0, 0, 0, 0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="usernameModalLabel">Enter Username</h5>
+        <div class="modal fade show" tabindex="-1" style="display:block;" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Enter Your Name</h5>
+                    </div>
+                    <div class="modal-body">
+                        <input @bind="_nameText" @bind:event="oninput" @onkeypress="HandleKeyPress" class="form-control" placeholder="Enter your name" />
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" @onclick="SetName" disabled="@_invalidName">Proceed</button>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <input @bind="_userNameInput" class="form-control" placeholder="Enter username" />
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" @onclick="SaveUserName">
-                        Save
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+}
+else
+{
+        <div class="container chat-container">
+            <div class="chat-box">
+            @foreach (var message in _messages)
+            {
+                        <div class="message-row @(message.Sender == _userName ? "sent" : "received")">
+                            <div class="message-wrapper d-flex flex-column">
+                                <span class="sender-name">@message.Sender</span>
+                                <div class="message-bubble">
+                                    <span class="message-text">@message.Text</span>
+                                </div>
+                            </div>
+                        </div>
+            }
+            </div>
+
+            <div class="message-input-box">
+                <div class="input-group">
+                    <input @bind="_newMessageText" @bind:event="oninput" @onkeypress="HandleSendKeyPress"
+                           class="form-control" placeholder="Type a message..." />
+                    <button class="btn btn-primary" @onclick="SendMessage" disabled="@string.IsNullOrWhiteSpace(_newMessageText)">
+                        Send
                     </button>
                 </div>
             </div>
         </div>
-    </div>
 }
 
 @code {
-    private string? _userName;
-    private string _userNameInput = string.Empty;
+    private string? _userName { get; set; }
+    private string? _nameText { get; set; }
+    private string? _newMessageText { get; set; }
+    private bool _invalidName => string.IsNullOrWhiteSpace(_nameText);
+    private IJSObjectReference? _jsModule;
+    private DotNetObjectReference<Home>? _dotNetRef;
+    private List<Message> _messages = new();
 
-    protected override Task OnInitializedAsync()
+    [JSInvokable]
+    public async Task OnMessageReceived(Message message)
     {
-        // Check if username exists in cookies
-        if (!ContextAccessor.HttpContext!.Request.Cookies.TryGetValue("userName", out var userName))
+        _messages.Add(message);
+        if (_messages.Count > 100)
         {
-            userName = null;
+            _messages.RemoveAt(0);
         }
-        _userName = userName;
-        return Task.CompletedTask;
+        StateHasChanged();
     }
 
-    private void SaveUserName()
+    public async ValueTask DisposeAsync()
     {
-        if (!string.IsNullOrWhiteSpace(_userNameInput))
+        if (_jsModule != null)
         {
-            // Save username in cookies
-            var cookieOptions = new CookieOptions
-                {
-                    Expires = DateTimeOffset.UtcNow.AddDays(30),
-                    HttpOnly = false
-                };
-            ContextAccessor.HttpContext!.Response.Cookies.Append("userName", _userNameInput, cookieOptions);
+            await _jsModule.InvokeVoidAsync("eventSourceHandler.stopEventSource");
+            await _jsModule.DisposeAsync();
+        }
+        _dotNetRef?.Dispose();
+    }
 
-            // Reflect changes immediately
-            _userName = _userNameInput;
-            _userNameInput = string.Empty;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string apiUrl = Config.GetValue<string>("ApiUrl");
+            if (string.IsNullOrWhiteSpace(apiUrl))
+            {
+                throw new Exception("ApiUrl is not configured");
+            }
 
-            // Force Blazor to re-render
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/eventSourceHandler.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _jsModule.InvokeVoidAsync("eventSourceHandler.startEventSource", $"{apiUrl}/message", _dotNetRef);
             StateHasChanged();
         }
     }
 
-    private void ResetUserName()
+    private void SetName()
     {
-        // Reset username and force modal to show again
-        ContextAccessor.HttpContext!.Response.Cookies.Delete("userName");
-        _userName = null;
+        if (_invalidName)
+        {
+            return;
+        }
+        _userName = _nameText;
+        StateHasChanged();
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            SetName();
+        }
+    }
+
+    private async Task HandleSendKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newMessageText))
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_newMessageText))
+        {
+            return;
+        }
+
+        var message = new Message
+            {
+                Sender = _userName!,
+                Text = _newMessageText
+            };
+
+        string apiUrl = Config.GetValue<string>("ApiUrl");
+        await Http.PostAsJsonAsync($"{apiUrl}/message", message);
+
+        _newMessageText = string.Empty;
         StateHasChanged();
     }
 }
