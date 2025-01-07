@@ -11,50 +11,69 @@
 
 @if (string.IsNullOrWhiteSpace(_userName))
 {
-        <div class="modal fade show" tabindex="-1" style="display:block;" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Enter Your Name</h5>
-                    </div>
-                    <div class="modal-body">
-                        <input @bind="_nameText" @bind:event="oninput" @onkeypress="HandleKeyPress" class="form-control" placeholder="Enter your name" />
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-primary" @onclick="SetName" disabled="@_invalidName">Proceed</button>
-                    </div>
+    <div class="modal fade show" tabindex="-1" style="display:block;" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enter Your Name</h5>
+                </div>
+                <div class="modal-body">
+                    <input @bind="_nameText" @bind:event="oninput" @onkeypress="HandleKeyPress" class="form-control" placeholder="Enter your name" />
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="SetName" disabled="@_invalidName">Proceed</button>
                 </div>
             </div>
         </div>
-        <div class="modal-backdrop fade show"></div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
 }
 else
 {
-        <div class="container chat-container">
-            <div class="chat-box">
-            @foreach (var message in _messages)
-            {
-                        <div class="message-row @(message.Sender == _userName ? "sent" : "received")">
-                            <div class="message-wrapper d-flex flex-column">
-                                <span class="sender-name">@message.Sender</span>
-                                <div class="message-bubble">
-                                    <span class="message-text">@message.Text</span>
-                                </div>
-                            </div>
-                        </div>
-            }
-            </div>
+    <div class="container chat-container">
+        @{
+            string? lastSender = null;
+        }
 
-            <div class="message-input-box">
-                <div class="input-group">
-                    <input @bind="_newMessageText" @bind:event="oninput" @onkeypress="HandleSendKeyPress"
-                           class="form-control" placeholder="Type a message..." />
-                    <button class="btn btn-primary" @onclick="SendMessage" disabled="@string.IsNullOrWhiteSpace(_newMessageText)">
-                        Send
-                    </button>
+        <div class="chat-box">
+            @if (!_messages.Any())
+            {
+                <div class="empty-message">
+                    <p>
+                        Messages are not stored. Only users currently on the site will see your messages.
+                    </p>
+                    <p>
+                        Open multiple browser windows to chat with yourself or test the experience!
+                    </p>
                 </div>
+            }
+            @foreach (var group in GroupMessagesBySender())
+            {
+                <div class="message-row d-flex flex-column @(group.Sender == _userName ? "sent" : "received")">
+                    <span class="sender-name">@group.Sender</span>
+
+                    <div class="message-group">
+                        @foreach (var message in group.Messages)
+                        {
+                            <div class="message-bubble">
+                                <span class="message-text">@message.Text</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="message-input-box">
+            <div class="input-group">
+                <input @bind="_newMessageText" @bind:event="oninput" @onkeypress="HandleSendKeyPress"
+                       class="form-control" placeholder="Type a message..." />
+                <button class="btn btn-primary" @onclick="SendMessage" disabled="@string.IsNullOrWhiteSpace(_newMessageText)">
+                    Send
+                </button>
             </div>
         </div>
+    </div>
 }
 
 @code {
@@ -67,8 +86,13 @@ else
     private List<Message> _messages = new();
 
     [JSInvokable]
-    public async Task OnMessageReceived(Message message)
+    public void OnMessageReceived(Message message)
     {
+        if (message.Sender == _userName)
+        {
+            return;
+        }
+
         _messages.Add(message);
         if (_messages.Count > 100)
         {
@@ -143,10 +167,41 @@ else
                 Text = _newMessageText
             };
 
-        string apiUrl = Config.GetValue<string>("ApiUrl");
-        await Http.PostAsJsonAsync($"{apiUrl}/message", message);
-
+        _messages.Add(message);
         _newMessageText = string.Empty;
         StateHasChanged();
+
+        string apiUrl = Config.GetValue<string>("ApiUrl");
+        await Http.PostAsJsonAsync($"{apiUrl}/message", message);
+    }
+
+    private List<MessageGroup> GroupMessagesBySender()
+    {
+        List<MessageGroup> groupedMessages = new();
+        if (_messages.Count == 0) return groupedMessages;
+
+        string currentSender = _messages[0].Sender;
+        MessageGroup currentGroup = new() { Sender = currentSender };
+
+        foreach (var message in _messages)
+        {
+            if (message.Sender != currentSender)
+            {
+                groupedMessages.Add(currentGroup);
+                currentSender = message.Sender;
+                currentGroup = new MessageGroup { Sender = currentSender };
+            }
+            currentGroup.Messages.Add(message);
+        }
+        groupedMessages.Add(currentGroup);
+        return groupedMessages;
+    }
+}
+
+@code {
+    public class MessageGroup
+    {
+        public string Sender { get; set; } = null!;
+        public List<Message> Messages { get; set; } = new();
     }
 }
