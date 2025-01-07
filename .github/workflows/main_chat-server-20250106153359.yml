@@ -16,6 +16,9 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
+    - name: Convert repository owner to lowercase
+      run: echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
     - name: Log in to GitHub Container Registry (GHCR)
       uses: docker/login-action@v2
       with:
@@ -28,7 +31,7 @@ jobs:
       with:
         context: ./Server
         push: true
-        tags: ghcr.io/${{ github.repository_owner }}/sse-chat-server:${{ github.sha }}
+        tags: ghcr.io/${{ env.REPO_OWNER }}/sse-chat-server:${{ github.sha }}
         file: ./Server/Dockerfile
 
   deploy:
@@ -46,4 +49,4 @@ jobs:
         app-name: 'chat-server-20250106153359'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_e046bf587031418eb66a471b32ad6f13 }}
-        images: 'ghcr.io/${{ github.repository_owner }}/sse-chat-server:${{ github.sha }}'
+        images: 'ghcr.io/${{ env.REPO_OWNER }}/sse-chat-server:${{ github.sha }}'
