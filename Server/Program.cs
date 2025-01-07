@@ -5,6 +5,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+Info.Started = DateTime.UtcNow;
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -40,5 +42,3 @@ app.UseCors("AllowBlazorClient");
 app.MapControllers();
 
 app.Run();
-
-Info.Started = DateTimeOffset.Now;

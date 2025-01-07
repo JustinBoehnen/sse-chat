@@ -2,6 +2,6 @@
 {
     public static class Info
     {
-        public static DateTimeOffset Started { get; set; }
+        public static DateTime Started { get; set; }
     }
 }
