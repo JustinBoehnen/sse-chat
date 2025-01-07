@@ -29,10 +29,10 @@ jobs:
     - name: Build and push container image to GHCR
       uses: docker/build-push-action@v3
       with:
-        context: ./sse-chat
+        context: .
         push: true
         tags: ghcr.io/${{ env.REPO_OWNER }}/sse-chat-server:${{ github.sha }}
-        file: ./sse-chat/Server/Dockerfile
+        file: ./Server/Dockerfile
 
   deploy:
     runs-on: ubuntu-latest
