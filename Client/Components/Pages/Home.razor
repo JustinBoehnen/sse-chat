@@ -1,0 +1,84 @@
+﻿@page "/"
+
+@inject IHttpContextAccessor ContextAccessor
+@inject IJSRuntime JS
+
+<PageTitle>🔴 Live Chat</PageTitle>
+
+<div class="container mt-5">
+    <h1>Welcome @(_userName ?? "Guest")</h1>
+
+    @if (!string.IsNullOrEmpty(_userName))
+    {
+        <button class="btn btn-primary" @onclick="ResetUserName">
+            Change Username
+        </button>
+    }
+</div>
+
+<!-- Modal (conditionally rendered based on username check) -->
+@if (string.IsNullOrEmpty(_userName))
+{
+    <div class="modal fade show d-block" id="usernameModal" tabindex="-1" aria-labelledby="usernameModalLabel" aria-hidden="true" style="background: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="usernameModalLabel">Enter Username</h5>
+                </div>
+                <div class="modal-body">
+                    <input @bind="_userNameInput" class="form-control" placeholder="Enter username" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SaveUserName">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string? _userName;
+    private string _userNameInput = string.Empty;
+
+    protected override Task OnInitializedAsync()
+    {
+        // Check if username exists in cookies
+        if (!ContextAccessor.HttpContext!.Request.Cookies.TryGetValue("userName", out var userName))
+        {
+            userName = null;
+        }
+        _userName = userName;
+        return Task.CompletedTask;
+    }
+
+    private void SaveUserName()
+    {
+        if (!string.IsNullOrWhiteSpace(_userNameInput))
+        {
+            // Save username in cookies
+            var cookieOptions = new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddDays(30),
+                    HttpOnly = false
+                };
+            ContextAccessor.HttpContext!.Response.Cookies.Append("userName", _userNameInput, cookieOptions);
+
+            // Reflect changes immediately
+            _userName = _userNameInput;
+            _userNameInput = string.Empty;
+
+            // Force Blazor to re-render
+            StateHasChanged();
+        }
+    }
+
+    private void ResetUserName()
+    {
+        // Reset username and force modal to show again
+        ContextAccessor.HttpContext!.Response.Cookies.Delete("userName");
+        _userName = null;
+        StateHasChanged();
+    }
+}
