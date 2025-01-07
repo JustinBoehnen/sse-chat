@@ -10,7 +10,7 @@ namespace Server.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            var diff = DateTimeOffset.UtcNow - Info.Started;
+            var diff = Info.Started - DateTimeOffset.UtcNow;
             return Ok($"API started {diff.Days} days {diff.Hours} hours and {diff.Minutes} minutes ago");
         }
     }
