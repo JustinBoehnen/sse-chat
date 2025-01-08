@@ -28,7 +28,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ghcr.io/justinboehnen/sse-chat-client:${{ github.sha }}
+        tags: ghcr.io/boehnen/sse-chat-client:${{ github.sha }}
         file: ./Client/Dockerfile
 
   build-server:
@@ -52,7 +52,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ghcr.io/justinboehnen/sse-chat-server:${{ github.sha }}
+        tags: ghcr.io/boehnen/sse-chat-server:${{ github.sha }}
         file: ./Server/Dockerfile
 
   deploy-client:
@@ -70,7 +70,7 @@ jobs:
         app-name: 'chat-client-20250106155647'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_6792b9a93f2e416b820b8bb6ca7fa504 }}
-        images: 'ghcr.io/justinboehnen/sse-chat-client:${{ github.sha }}'
+        images: 'ghcr.io/boehnen/sse-chat-client:${{ github.sha }}'
 
   deploy-server:
     runs-on: ubuntu-latest
@@ -87,4 +87,4 @@ jobs:
         app-name: 'chat-server-20250106153359'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_e046bf587031418eb66a471b32ad6f13 }}
-        images: 'ghcr.io/justinboehnen/sse-chat-server:${{ github.sha }}'
+        images: 'ghcr.io/boehnen/sse-chat-server:${{ github.sha }}'
